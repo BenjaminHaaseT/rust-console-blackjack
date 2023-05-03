@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::iter::Iterator;
 
 const SUITS: [&'static str; 4] = ["C", "D", "H", "S"];
 const RANKS: [&'static str; 13] = [
@@ -29,7 +30,8 @@ impl Display for Card {
 pub struct Deck {
     cards: Vec<Card>,
     n_decks: u32,
-    n_cards: u32,
+    n_cards: usize,
+    card_ptr: usize,
     shuffle_flag_pos: usize,
     shuffle_flag: bool,
 }
@@ -50,7 +52,10 @@ impl Deck {
     pub fn new(n_decks: u32) -> Deck {
         assert!(n_decks > 0, "Cannot have a deck with zero cards");
         let cards = Self::build_card_deck(n_decks);
-        let n_cards = cards.len() as u32;
+        let n_cards = cards.len();
+
+        // TODO: refactor how Deck/DeckIterator interact i.e shift card index out of deck class
+        let card_ptr = 0;
         let shuffle_flag_pos = f32::floor(((n_cards - 1) as f32) * 0.8) as usize;
         let shuffle_flag = true;
 
@@ -58,8 +63,31 @@ impl Deck {
             cards,
             n_decks,
             n_cards,
+            card_ptr,
             shuffle_flag_pos,
             shuffle_flag,
         }
+    }
+}
+
+struct DeckIterator<'a> {
+    deck: &'a Deck,
+    card_ptr: usize,
+    shuffle_flag: bool,
+}
+
+impl<'a> Iterator for DeckIterator<'a> {
+    type Item = &'a Card;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.card_ptr == self.deck.shuffle_flag_pos {
+            self.shuffle_flag = true;
+        }
+        if self.card_ptr < self.deck.cards.len() {
+            let res = Some(&self.deck.cards[self.card_ptr]);
+            self.card_ptr += 1;
+            return res;
+        }
+
+        None
     }
 }
