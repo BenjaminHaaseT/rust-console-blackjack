@@ -167,7 +167,7 @@ impl BlackjackHand for PlayersBlackjackHand {
         }
 
         let (formatted_hand_str, formatted_hand_values_str, formatted_bet_str) = (
-            self.hand_values_str.join(" | "),
+            self.hand_str.join(" | "),
             formatted_hand_values_str.join(" | "),
             formatted_bet_str.join(" | "),
         );
@@ -365,7 +365,7 @@ impl BlackjackHand for DealersBlackjackHand {
 pub struct Player {
     name: String,
     balance: f32,
-    hand: PlayersBlackjackHand,
+    bj_hand: PlayersBlackjackHand,
 }
 
 impl Player {
@@ -373,14 +373,14 @@ impl Player {
         Player {
             name,
             balance,
-            hand: PlayersBlackjackHand::new(),
+            bj_hand: PlayersBlackjackHand::new(),
         }
     }
 
     pub fn place_bet(&mut self, bet: f32) {
         assert!(bet <= self.balance);
         self.balance -= bet;
-        self.hand.place_bet(bet as u32);
+        self.bj_hand.place_bet(bet as u32);
     }
 
     pub fn display_balance(&self) {
@@ -515,7 +515,7 @@ impl BlackjackTableCLI {
     /// dealer has a blackjack and whether or not `player` has a blackjack and executes the appropriate logic
     pub fn deal_hand(&mut self, player: &mut Player) {
         assert!(
-            !player.hand.bets.is_empty(),
+            !player.bj_hand.bets.is_empty(),
             "bet must be placed by the player before proceeding"
         );
 
@@ -526,12 +526,21 @@ impl BlackjackTableCLI {
         }
 
         // Deal cards to player and dealer
-        player.hand.receive_card(self.deck.get_next_card().unwrap());
+        player
+            .bj_hand
+            .receive_card(self.deck.get_next_card().unwrap());
+
         self.dealers_hand
             .receive_card(self.deck.get_next_card().unwrap());
-        player.hand.receive_card(self.deck.get_next_card().unwrap());
+        player
+            .bj_hand
+            .receive_card(self.deck.get_next_card().unwrap());
+
         self.dealers_hand
             .receive_card(self.deck.get_next_card().unwrap());
+
+        player.bj_hand.compute_hand_value();
+        self.dealers_hand.compute_hand_value();
 
         // Check if dealer has blackjack or not, then perform the appropriate logic
         println!("{:-<80}", "");
@@ -540,31 +549,31 @@ impl BlackjackTableCLI {
             self.dealers_hand.display_hand();
             self.dealers_hand.display_hand_value();
             println!("\n\n");
-            player.hand.display_hand();
+            player.bj_hand.display_hand();
             player.display_balance();
             println!();
 
             // Check if player has blackjack
             let mut result_str = String::from("Dealer has blackjack: ");
-            if player.hand.is_blackjack() {
+            if player.bj_hand.is_blackjack() {
                 result_str.push_str("you pushed");
-                player.balance += player.hand.bets.pop().unwrap() as f32;
+                player.balance += player.bj_hand.bets.pop().unwrap() as f32;
             } else {
                 result_str.push_str("you lost the bet");
-                self.balance += player.hand.bets.pop().unwrap() as f32;
+                self.balance += player.bj_hand.bets.pop().unwrap() as f32;
             }
             println!("{result_str}");
         } else {
             self.dealers_hand.display_hand_without_hole();
             println!("\n\n");
-            player.hand.display_hand();
+            player.bj_hand.display_hand();
             player.display_balance();
 
             // Check if player has a blackjack
-            if player.hand.is_blackjack() {
-                let winnings = 1.5 * (player.hand.bets[0] as f32);
+            if player.bj_hand.is_blackjack() {
+                let winnings = 1.5 * (player.bj_hand.bets[0] as f32);
                 self.balance -= winnings;
-                player.balance += winnings + (player.hand.bets.pop().unwrap() as f32);
+                player.balance += winnings + (player.bj_hand.bets.pop().unwrap() as f32);
 
                 println!("You won the bet, winnings: {:2.2}", winnings);
             }
@@ -590,8 +599,8 @@ mod test {
 
         table.place_bet(&mut player, 25.0);
 
-        println!("{:?}", player.hand.bets);
-        assert_eq!(player.hand.bets, vec![25u32]);
+        println!("{:?}", player.bj_hand.bets);
+        assert_eq!(player.bj_hand.bets, vec![25u32]);
 
         println!("{}", player.balance);
         assert_eq!(player.balance, 475.0);
