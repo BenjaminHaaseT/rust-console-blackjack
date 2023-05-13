@@ -1,25 +1,16 @@
+
 use rand::prelude::*;
 use std::fmt::Display;
 use std::iter::Iterator;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::collections::HashMap;
+
 
 const SUITS: [&'static str; 4] = ["C", "D", "H", "S"];
 const RANKS: [&'static str; 13] = [
     "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
 ];
-
-pub trait BlackjackHand {
-    fn receive_card(&mut self, card: Rc<Card>);
-
-    fn display_hand(&self);
-
-    fn compute_hand_value(&mut self);
-
-    fn is_blackjack(&self) -> bool;
-
-    fn busted(&self) -> bool;
-}
 
 pub trait BlackjackTable {}
 
@@ -116,7 +107,6 @@ impl Deck {
     }
 }
 
-//TODO: implement Hand trait and player/dealers hand structs to encapsulate some functionality out of blackjack table struct
 pub struct PlayersBlackjackHand {
     hand: Vec<Vec<Rc<Card>>>,
     hand_values: Vec<Vec<u8>>,
@@ -127,7 +117,6 @@ pub struct PlayersBlackjackHand {
     hand_idx: usize,
 }
 
-// TODO: Implement other playing options such as split and double down and constructor
 impl PlayersBlackjackHand {
     fn new() -> Self {
         let hand = vec![vec![]];
@@ -154,9 +143,29 @@ impl PlayersBlackjackHand {
         self.bets_str.push(bet.to_string());
         bet
     }
-}
 
-impl BlackjackHand for PlayersBlackjackHand {
+    /// Simple function to check whether or not the current hand i.e. the hand at index `hand_idx` can split.
+    /// The function will panice if `hand_idx` is not a valid index or the hand vector is empty.
+    fn can_split(&self, hand_idx: usize) -> bool {
+        self.hand[hand_idx].len() == 2 &&
+        self.hand[hand_idx][0].rank == self.hand[hand_idx][1].rank
+    }
+
+    /// Simple fucntion to check whether the current hand i.e. the hand at index `hand_idx` can double down.
+    /// The function will panic if `hand_idx` is not a valid index, or hand_values vector is empty.
+    fn can_double_down(&self, hand_idx: usize) -> bool {
+        if self.hand_values[hand_idx].len() == 2 {
+            hand_idx == 0 && (
+                (self.hand_values[hand_idx][0] == 9 || self.hand_values[hand_idx][0] == 10 || self.hand_values[hand_idx][0] == 11) ||
+                (self.hand_values[hand_idx][1] == 9 || self.hand_values[hand_idx][1] == 10 || self.hand_values[hand_idx][1] == 11)
+            )
+        } else {
+            hand_idx == 0 &&
+                (self.hand_values[hand_idx][0] == 9 || self.hand_values[hand_idx][0] == 10 || self.hand_values[hand_idx][0] == 11)
+        }
+    }
+
+    /// Displays the players current blackjack hand in the console printed in a nice looking format
     fn display_hand(&self) {
         let mut formatted_hand_values_str = vec![];
         let mut formatted_bet_str = vec![];
@@ -185,75 +194,139 @@ impl BlackjackHand for PlayersBlackjackHand {
 
     /// Receive a new card, add it to the players hand and update the string representing
     /// the current hand as well
-    fn receive_card(&mut self, card: Rc<Card>) {
-        self.hand[self.hand_idx].push(Rc::clone(&card));
+    fn receive_card(&mut self, card: Rc<Card>, hand_idx: usize) {
+        self.hand[hand_idx].push(Rc::clone(&card));
         // Now update string representing hand
-        if self.hand_str[self.hand_idx].is_empty() {
-            self.hand_str[self.hand_idx].push_str(card.to_string().as_str());
+        if self.hand_str[hand_idx].is_empty() {
+            self.hand_str[hand_idx].push_str(card.to_string().as_str());
         } else {
-            self.hand_str[self.hand_idx].push_str(format!(" {}", card.to_string()).as_str());
+            self.hand_str[hand_idx].push_str(format!(" {}", card.to_string()).as_str());
         }
     }
 
     /// Compute the value of the players current hand and update the formatted string
     /// representing the value of the current hand as well
-    fn compute_hand_value(&mut self) {
-        if self.hand[self.hand_idx].len() == 2 {
-            self.hand_values[self.hand_idx].push(
-                self.hand[self.hand_idx]
+    fn compute_hand_value(&mut self, hand_idx: usize) {
+        if self.hand[hand_idx].len() == 2 {
+            self.hand_values[hand_idx].push(
+                self.hand[hand_idx]
                     .iter()
                     .map(|c| c.get_card_value())
                     .sum::<u8>(),
             );
 
             // Need to check if we have more than one possible value for the given hand
-            if self.hand[self.hand_idx][0].rank == "A" || self.hand[self.hand_idx][0].rank == "A" {
-                let alternative_hand_val = self.hand_values[self.hand_idx]
+            if self.hand[hand_idx][0].rank == "A" || self.hand[hand_idx][0].rank == "A" {
+                let alternative_hand_val = self.hand_values[hand_idx]
                     .last()
                     .expect("hand should not be empty")
-                    + 10;
+                                           + 10;
 
-                self.hand_values[self.hand_idx].push(alternative_hand_val);
+                self.hand_values[hand_idx].push(alternative_hand_val);
             }
         } else {
-            let new_card_val = self.hand[self.hand_idx]
+            let new_card_val = self.hand[hand_idx]
                 .last()
                 .expect("hand should not be empty")
                 .get_card_value();
-            self.hand_values[self.hand_idx][0] += new_card_val;
-            if self.hand_values[self.hand_idx].len() == 2 {
-                self.hand_values[self.hand_idx][1] += new_card_val;
+            self.hand_values[hand_idx][0] += new_card_val;
+            if self.hand_values[hand_idx].len() == 2 {
+                self.hand_values[hand_idx][1] += new_card_val;
             }
         }
 
         // Now update the string that represents the value
-        self.hand_values_str[self.hand_idx] = if self.hand_values[self.hand_idx].len() == 2 {
+        self.hand_values_str[hand_idx] = if self.hand_values[hand_idx].len() == 2 {
             format!(
                 "{}/{}",
-                self.hand_values[self.hand_idx][0], self.hand_values[self.hand_idx][1]
+                self.hand_values[hand_idx][0], self.hand_values[hand_idx][1]
             )
         } else {
-            self.hand_values[self.hand_idx][0].to_string()
+            self.hand_values[hand_idx][0].to_string()
         };
     }
 
     /// Checks if the players current hand is a blackjack, ensures it must be a natural blackjack by
     /// checking that `self.hand_idx` is equal to zero i.e. it is the first hand dealt to the player, not
     /// a hand dealt after splitting
-    fn is_blackjack(&self) -> bool {
-        self.hand_idx == 0
-            && self.hand[0].len() == 2
-            && ((self.hand[0][0].rank == "A" && self.hand[0][1].get_card_value() == 10)
-                || (self.hand[0][0].get_card_value() == 10 && self.hand[0][1].rank == "A"))
+    fn is_blackjack(&self, hand_idx: usize) -> bool {
+        hand_idx == 0
+        && self.hand[0].len() == 2
+        && ((self.hand[0][0].rank == "A" && self.hand[0][1].get_card_value() == 10)
+            || (self.hand[0][0].get_card_value() == 10 && self.hand[0][1].rank == "A"))
     }
 
     /// Checks whether the current hand has busted or not
-    fn busted(&self) -> bool {
-        if self.hand_values[self.hand_idx].len() == 2 {
-            self.hand_values[self.hand_idx][0] > 21 && self.hand_values[self.hand_idx][1] > 21
+    fn busted(&self, hand_idx: usize) -> bool {
+        if self.hand_values[hand_idx].len() == 2 {
+            self.hand_values[hand_idx][0] > 21 && self.hand_values[hand_idx][1] > 21
         } else {
-            self.hand_values[self.hand_idx][0] > 21
+            self.hand_values[hand_idx][0] > 21
         }
+    }
+
+
+}
+
+pub struct Player {
+    name: String,
+    balance: f32,
+    bj_hand: PlayersBlackjackHand,
+    hand_idx: usize,
+}
+
+impl Player {
+    pub fn new(name: String, balance: f32) -> Player {
+        Player {
+            name,
+            balance,
+            bj_hand: PlayersBlackjackHand::new(),
+            hand_idx: 0usize,
+        }
+    }
+
+    pub fn place_bet(&mut self, bet: f32) {
+        assert!(bet <= self.balance);
+        self.balance -= bet;
+        self.bj_hand.place_bet(bet as u32);
+    }
+
+    pub fn display_balance(&self) {
+        println!("{:<10}${}", "Balance:", self.balance)
+    }
+
+    /// Queries the players hand struct to see what the valid options are for the player to takes
+    /// function will panic if the players current hand has busted or the player has not placed any bets
+    pub fn get_playing_options(&self) -> HashMap<i32, &str> {
+        assert!(!self.bj_hand.busted(self.hand_idx), "hand should be over");
+        assert!(!self.bj_hand.bets.is_empty(), "player should have placed a bet");
+        let mut playing_options = HashMap::new();
+        playing_options.insert(1, "stand");
+        playing_options.insert(2, "hit");
+        let mut playing_option = 3;
+
+        if self.bj_hand.can_split(self.hand_idx) && self.balance >= (self.bj_hand.bets[self.hand_idx] as f32) && self.bj_hand.hand.len() < 4 {
+            playing_options.insert(playing_option, "split");
+            playing_option += 1;
+        }
+
+        if self.bj_hand.can_double_down(self.hand_idx) && self.balance >= (self.bj_hand.bets[self.hand_idx] as f32) && self.hand_idx == 0 {
+            playing_options.insert(playing_option, "double down");
+        }
+
+        playing_options
+    }
+
+    pub fn receive_card(&mut self, card: Rc<Card>) {
+        self.bj_hand.receive_card(card, self.hand_idx);
+    }
+
+    pub fn has_blackjack(&self) -> bool {
+        self.bj_hand.is_blackjack(self.hand_idx)
+    }
+
+    pub fn compute_hand_value(&mut self) {
+        self.bj_hand.compute_hand_value(self.hand_idx);
     }
 }
 
@@ -294,9 +367,7 @@ impl DealersBlackjackHand {
             self.hand[1]
         );
     }
-}
 
-impl BlackjackHand for DealersBlackjackHand {
     /// Checks whether the dealers hand has busted or not
     fn busted(&self) -> bool {
         if self.hand_value.len() == 2 {
@@ -362,33 +433,8 @@ impl BlackjackHand for DealersBlackjackHand {
         }
     }
 }
-pub struct Player {
-    name: String,
-    balance: f32,
-    bj_hand: PlayersBlackjackHand,
-}
 
-impl Player {
-    pub fn new(name: String, balance: f32) -> Player {
-        Player {
-            name,
-            balance,
-            bj_hand: PlayersBlackjackHand::new(),
-        }
-    }
-
-    pub fn place_bet(&mut self, bet: f32) {
-        assert!(bet <= self.balance);
-        self.balance -= bet;
-        self.bj_hand.place_bet(bet as u32);
-    }
-
-    pub fn display_balance(&self) {
-        println!("{:<10}${}", "Balance:", self.balance)
-    }
-}
-
-pub struct BlackjackTableCLI {
+struct BlackjackTableCLI {
     deck: Deck,
     balance: f32,
     dealers_hand: DealersBlackjackHand,
@@ -396,6 +442,7 @@ pub struct BlackjackTableCLI {
 }
 
 //TODO: implement methods for a working console based blackjack game
+// TODO: ie query blackjack hand of player, to get playing options, and a play option method as well
 impl BlackjackTableCLI {
     pub fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> BlackjackTableCLI {
         let deck = Deck::new(n_decks);
@@ -408,107 +455,22 @@ impl BlackjackTableCLI {
         }
     }
 
-    // pub fn compute_hand_value(hand: &Vec<Rc<Card>>, hand_value: &mut Vec<u8>) {
-    //     let val = hand.iter().map(|c| c.as_ref().get_card_value()).sum::<u8>();
-    //     hand_value.push(val);
-    //     if (hand[0].rank == "A" && hand[1].get_card_value() != 10)
-    //         || (hand[0].get_card_value() != 0 && hand[1].rank == "A")
-    //     {
-    //         hand_value.push(hand_value[0] + 10);
-    //     }
-    // }
-
-    // pub fn check_blackjack(hand: &Vec<Rc<Card>>) -> bool {
-    //     assert!(
-    //         hand.len() == 2,
-    //         "cannot check for a blackjack with more than 2 cards"
-    //     );
-    //     (hand[0].rank == "A" && hand[1].get_card_value() == 10)
-    //         || (hand[0].get_card_value() == 10 && hand[1].rank == "A")
-    // }
-
-    // pub fn display_table_state(&self, player: &Player, display_dealers_hole_card: bool) {
-    //     // Convert dealers hand to vector of strings depending on whether or not we are showing the dealers hole card
-    //     let dealers_formatted_hand =
-    //         vec![Card::display_facedown(), self.dealers_hand[1].to_string()].join(" ");
-
-    //     // Compute players hand value, for each hand the player has a bet on
-    //     let mut players_hand_vec = player
-    //         .hand
-    //         .iter()
-    //         .map(|v| {
-    //             v.iter()
-    //                 .map(|c| c.as_ref().to_string())
-    //                 .collect::<Vec<String>>()
-    //                 .join(" ")
-    //         })
-    //         .collect::<Vec<String>>();
-
-    //     // Do the same for the values of each hand
-    //     let mut players_hand_value_vec = player
-    //         .hand_value
-    //         .iter()
-    //         .map(|v| {
-    //             if v.len() == 1 {
-    //                 v[0].to_string()
-    //             } else {
-    //                 format!("{}/{}", v[0], v[1])
-    //             }
-    //         })
-    //         .collect::<Vec<String>>();
-
-    //     // Now get formatted hand string, values, and bets for each of the players hand
-    //     let (players_formatted_hand, players_formatted_hand_values, players_formatted_bets) =
-    //         if players_hand_vec.len() > 1 {
-    //             let mut hand_str = String::new();
-    //             let mut hand_value_str = String::new();
-    //             let mut bet_str = String::new();
-
-    //             hand_str.push_str(players_hand_vec[0].as_str());
-    //             let width = hand_str.len();
-    //             hand_value_str.push_str(format!("{:<width$}", players_hand_value_vec[0]).as_str());
-    //             bet_str.push_str(format!("{:<width$}$", self.bets[0]).as_str());
-
-    //             for i in 1..players_hand_vec.len() {
-    //                 let width = hand_str.len();
-    //                 hand_str.push_str(format!(" | {}", players_hand_vec[i]).as_str());
-    //                 hand_value_str.push_str(
-    //                     format!("{:<width$} | {}", "", players_hand_value_vec[i]).as_str(),
-    //                 );
-    //                 bet_str.push_str(format!("{:<width$} | {}$", "", self.bets[i]).as_str());
-    //             }
-
-    //             (hand_str, hand_value_str, bet_str)
-    //         } else {
-    //             (
-    //                 players_hand_vec.remove(0),
-    //                 players_hand_value_vec.remove(0),
-    //                 self.bets[0].to_string(),
-    //             )
-    //         };
-
-    //     println!("{}", format!("-").repeat(80));
-    //     println!("{}", format!("{:<9}{}", "Dealer:", dealers_formatted_hand));
-    //     println!("\n\n");
-    //     println!("{}", format!("{:<9}{}", "You:", players_formatted_hand));
-    //     println!(
-    //         "{}",
-    //         format!("{:<9}{}", "Value:", players_formatted_hand_values)
-    //     );
-    //     let bet_tag = if self.bets.len() == 1 {
-    //         "Bet:".to_string()
-    //     } else {
-    //         "Bets:".to_string()
-    //     };
-    //     println!("{}", format!("{:<9}{}", bet_tag, players_formatted_bets));
-    //     println!("{}", format!("{:<9}{}", "Balance:", player.balance));
-    // }
-
-    /// takes a Player struct `player` and places a bet
+    /// Takes a Player struct, `player` and places a bet
     pub fn place_bet(&self, player: &mut Player, bet: f32) {
         assert!(bet > 0.0, "cannot place a bet of 0$");
         assert!(self.balance >= 1.5 * bet, "insufficient funds at the table");
         player.place_bet(bet);
+    }
+
+    /// Takes `player` and queries the `players` hand to find valid playing options for the player, and then,
+    /// display playing options on the console.
+    fn display_playing_options(&self, player: &Player) {
+        println!();
+        println!("Your options: ");
+        let options = player.get_playing_options();
+        for i in 1 ..= (options.len() as i32) {
+            println!("\t {}: {}", i, options.get(&i).unwrap());
+        }
     }
 
     /// Implments the logic that deals the initial cards at the start of a hand, checks if
@@ -526,20 +488,17 @@ impl BlackjackTableCLI {
         }
 
         // Deal cards to player and dealer
-        player
-            .bj_hand
-            .receive_card(self.deck.get_next_card().unwrap());
-
-        self.dealers_hand
-            .receive_card(self.deck.get_next_card().unwrap());
-        player
-            .bj_hand
-            .receive_card(self.deck.get_next_card().unwrap());
+        player.receive_card(self.deck.get_next_card().unwrap());
 
         self.dealers_hand
             .receive_card(self.deck.get_next_card().unwrap());
 
-        player.bj_hand.compute_hand_value();
+        player.receive_card(self.deck.get_next_card().unwrap());
+
+        self.dealers_hand
+            .receive_card(self.deck.get_next_card().unwrap());
+
+        player.compute_hand_value();
         self.dealers_hand.compute_hand_value();
 
         // Check if dealer has blackjack or not, then perform the appropriate logic
@@ -555,7 +514,7 @@ impl BlackjackTableCLI {
 
             // Check if player has blackjack
             let mut result_str = String::from("Dealer has blackjack: ");
-            if player.bj_hand.is_blackjack() {
+            if player.has_blackjack() {
                 result_str.push_str("you pushed");
                 player.balance += player.bj_hand.bets.pop().unwrap() as f32;
             } else {
@@ -570,7 +529,7 @@ impl BlackjackTableCLI {
             player.display_balance();
 
             // Check if player has a blackjack
-            if player.bj_hand.is_blackjack() {
+            if player.has_blackjack() {
                 let winnings = 1.5 * (player.bj_hand.bets[0] as f32);
                 self.balance -= winnings;
                 player.balance += winnings + (player.bj_hand.bets.pop().unwrap() as f32);
@@ -616,5 +575,15 @@ mod test {
 
         // assert_eq!(player.hand.hand[0].len(), 2usize);
         // assert_eq!(table.dealers_hand.hand.len(), 2usize);
+    }
+
+    #[test]
+    fn test_blackjack_table_dealing_and_displaying_options() {
+        let mut table = BlackjackTableCLI::new(500000000., 6, 7);
+        let mut player = Player::new("Rick Sanchez".to_string(), 500.);
+
+        table.place_bet(&mut player, 25.0);
+        table.deal_hand(&mut player);
+        table.display_playing_options(&player);
     }
 }
