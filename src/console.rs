@@ -1,5 +1,5 @@
 /// This module contains all the necessary structs for a blackjack game played on the console.
-use crate::{compute_optimal_hand, Card, Deck};
+use crate::{compute_optimal_hand, BlackjackGameError, Card, Deck};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -285,9 +285,11 @@ impl PlayerCLI {
 
     /// Takes `bet` representing a bet at a blackjack table, and updates the balance then passes the value along to
     /// the players PlayersBlackjackHand struct to execute the necessary logic for that struct as well
-    pub fn place_bet(&mut self, bet: f32) -> Result<(), String> {
+    pub fn place_bet(&mut self, bet: f32) -> Result<(), BlackjackGameError> {
         if bet > self.balance {
-            return Err(format!("{}", "Insufficient funds to place that bet"));
+            return Err(BlackjackGameError {
+                message: "Insufficient funds to place that bet".to_string(),
+            });
         }
         self.balance -= bet;
         self.bj_hand.place_bet(bet as u32);
@@ -538,11 +540,16 @@ impl BlackjackTableCLI {
     }
 
     /// Takes a Player struct, `player` and places a bet
-    pub fn place_bet(&self, player: &mut PlayerCLI, bet: f32) -> Result<(), String> {
+    pub fn place_bet(&self, player: &mut PlayerCLI, bet: f32) -> Result<(), BlackjackGameError> {
         if bet <= 0.0 {
-            return Err("Bet must be a positive amount".to_string());
+            return Err(BlackjackGameError {
+                message: "Bet must be a positive amount".to_string(),
+            });
+            // return Err("Bet must be a positive amount".to_string());
         } else if self.balance < 1.5 * bet {
-            return Err("Insufficient table balance to payout bet".to_string());
+            return Err(BlackjackGameError {
+                message: "Insufficient table balance to payout bet".to_string(),
+            });
         }
         player.place_bet(bet)
     }
@@ -568,16 +575,15 @@ impl BlackjackTableCLI {
         player: &mut PlayerCLI,
         options: &HashMap<i32, String>,
         option: i32,
-    ) -> Result<(), String> {
+    ) -> Result<(), BlackjackGameError> {
         match options[&option].as_str() {
             "stand" => Ok(self.stand(player)),
             "hit" => Ok(self.hit(player)),
             "split" => Ok(self.split(player)),
             "double down" => Ok(self.double_down(player)),
-            _ => Err(format!(
-                "sorry but {} is not a valid option for the given options",
-                option
-            )),
+            _ => Err(BlackjackGameError {
+                message: format!("{} is not a valid option", option),
+            }),
         }
     }
 

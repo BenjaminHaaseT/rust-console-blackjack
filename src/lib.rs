@@ -20,6 +20,25 @@ const RANKS: [&'static str; 13] = [
 
 // pub trait DealersBlackjackHand {}
 
+#[derive(Debug)]
+pub struct BlackjackGameError {
+    message: String,
+}
+
+impl BlackjackGameError {
+    pub fn new(message: String) -> BlackjackGameError {
+        BlackjackGameError { message }
+    }
+}
+
+impl Display for BlackjackGameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for BlackjackGameError {}
+
 /// General function for computing the optimal hand at the end of a hand of blackjack.
 /// Takes `hand_value` a vector of u8, and returns its optimal value i.e. the greatest value less than
 /// or equal to 21, if such a value exists in `hand_value`.
