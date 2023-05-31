@@ -21,6 +21,12 @@ pub trait BlackjackTable<P: Player> {
     fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self;
     fn place_bet(&self, player: &mut P, bet: f32) -> Result<(), BlackjackGameError>;
     fn deal_hand(&mut self, player: &mut P);
+    fn play_option(
+        &mut self,
+        player: &mut P,
+        options: &HashMap<i32, String>,
+        option: i32,
+    ) -> Result<(), BlackjackGameError>;
     fn stand(&self, player: &mut P);
     fn hit(&mut self, player: &mut P);
     fn double_down(&mut self, player: &mut P);
