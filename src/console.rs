@@ -507,6 +507,34 @@ impl DealersBlackjackHandCLI {
         }
     }
 
+    /// Method for computing the optimal, valid final hand according to the rules of blackjack
+    fn compute_optimal_final_hand(&mut self, deck: &mut Deck) -> u8 {
+        if self.hand_value.len() == 1 {
+            while self.hand_value[0] < 17 && self.hand_value.len() < 2 {
+                self.receive_card(deck.get_next_card().unwrap());
+                self.compute_hand_value();
+            }
+        }
+
+        // Check to see if we have a hand multiple hand values
+        while self.hand_value.len() == 2 && self.hand_value[0] < 17 && self.hand_value[1] < 17 {
+            self.receive_card(deck.get_next_card().unwrap());
+            self.compute_hand_value();
+        }
+
+        // Ensure the dealer has a valid hand no less than 17
+        while self.hand_value.len() == 2
+            && ((self.hand_value[0] < 17 && self.hand_value[1] > 21)
+                || (self.hand_value[0] > 21 && self.hand_value[1] < 17))
+        {
+            self.receive_card(deck.get_next_card().unwrap());
+            self.compute_hand_value();
+        }
+
+        // Now we are sure the dealer has drawn enough cards to either bust or have a valid hand according to rules of blackjack
+        compute_optimal_hand(&self.hand_value)
+    }
+
     /// Resets the dealers hand to play another round
     fn reset(&mut self) {
         self.hand.clear();
@@ -744,50 +772,36 @@ impl BlackjackTableCLI {
     /// A method for computing and returning the optimal hand for the dealer at the end of a hand of blackjack.
     /// The dealers draws cards according to the rules of blackjack, then the optimal hand once a hand with a value of no less than 17 is achieved
     fn get_dealers_optimal_final_hand(&mut self) -> u8 {
-        if self.dealers_hand.hand_value.len() == 1 {
-            while self.dealers_hand.hand_value[0] < 17 && self.dealers_hand.hand_value.len() < 2 {
-                self.dealers_hand
-                    .receive_card(self.deck.get_next_card().unwrap());
-                self.dealers_hand.compute_hand_value();
-            }
-        }
+        // if self.dealers_hand.hand_value.len() == 1 {
+        //     while self.dealers_hand.hand_value[0] < 17 && self.dealers_hand.hand_value.len() < 2 {
+        //         self.dealers_hand
+        //             .receive_card(self.deck.get_next_card().unwrap());
+        //         self.dealers_hand.compute_hand_value();
+        //     }
+        // }
 
-        // Check to see if we have a hand multiple hand values
-        while self.dealers_hand.hand_value.len() == 2
-            && self.dealers_hand.hand_value[0] < 17
-            && self.dealers_hand.hand_value[1] < 17
-        {
-            self.dealers_hand
-                .receive_card(self.deck.get_next_card().unwrap());
-            self.dealers_hand.compute_hand_value();
-        }
+        // // Check to see if we have a hand multiple hand values
+        // while self.dealers_hand.hand_value.len() == 2
+        //     && self.dealers_hand.hand_value[0] < 17
+        //     && self.dealers_hand.hand_value[1] < 17
+        // {
+        //     self.dealers_hand
+        //         .receive_card(self.deck.get_next_card().unwrap());
+        //     self.dealers_hand.compute_hand_value();
+        // }
 
-        // Ensure the dealer has a valid hand no less than 17
-        while self.dealers_hand.hand_value.len() == 2
-            && ((self.dealers_hand.hand_value[0] < 17 && self.dealers_hand.hand_value[1] > 21)
-                || (self.dealers_hand.hand_value[0] > 21 && self.dealers_hand.hand_value[1] < 17))
-        {
-            self.dealers_hand
-                .receive_card(self.deck.get_next_card().unwrap());
-            self.dealers_hand.compute_hand_value();
-        }
-
+        // // Ensure the dealer has a valid hand no less than 17
+        // while self.dealers_hand.hand_value.len() == 2
+        //     && ((self.dealers_hand.hand_value[0] < 17 && self.dealers_hand.hand_value[1] > 21)
+        //         || (self.dealers_hand.hand_value[0] > 21 && self.dealers_hand.hand_value[1] < 17))
+        // {
+        //     self.dealers_hand
+        //         .receive_card(self.deck.get_next_card().unwrap());
+        //     self.dealers_hand.compute_hand_value();
+        // }
+        // Draw cards according
         // Now we are sure the dealer has drawn enough cards to either bust or have a valid hand according to rules of blackjack
-        if self.dealers_hand.hand_value.len() == 2 {
-            if self.dealers_hand.hand_value[0] > 21 || self.dealers_hand.hand_value[1] > 21 {
-                return u8::min(
-                    self.dealers_hand.hand_value[0],
-                    self.dealers_hand.hand_value[1],
-                );
-            } else {
-                return u8::max(
-                    self.dealers_hand.hand_value[0],
-                    self.dealers_hand.hand_value[1],
-                );
-            }
-        }
-
-        self.dealers_hand.hand_value[0]
+        self.dealers_hand.compute_optimal_final_hand(&mut self.deck)
     }
 
     /// This method will complete a hand of blackjack, it will check `player` optimal hand(s) against the dealer and payout bets accordingly
