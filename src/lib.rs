@@ -14,46 +14,26 @@ const RANKS: [&'static str; 13] = [
     "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
 ];
 
-// pub trait Player {
-//     fn new(name: String, balance: f32) -> Self;
-//     fn get_optimal_hands(&self) -> Option<HashMap<usize, u8>>;
-//     fn stand(&mut self);
-//     fn turn_is_over(&self) -> bool;
-//     fn place_bet(&mut self, bet: f32) -> Result<(), BlackjackGameError>;
-//     fn lose_bet(&mut self) -> u32;
-//     fn get_playing_options(&self) -> HashMap<i32, String>;
-//     fn receive_card(&mut self, card: Rc<Card>);
-//     fn double_down(&mut self);
-//     fn split(&mut self, card1: Rc<Card>, card2: Rc<Card>);
-//     fn has_blackjack(&self) -> bool;
-//     fn busted(&self) -> bool;
-//     fn compute_hand_value(&mut self);
-//     fn reset(&mut self);
-// }
+/// A trait that acts as an interface for any kind of blackjack table struct
+pub trait BlackjackTable {
+    fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self;
+    fn place_bet(&self, player: &mut Player, bet: f32) -> Result<(), BlackjackGameError>;
+    fn play_option(
+        &mut self,
+        player: &mut Player,
+        options: &HashMap<i32, String>,
+        option: i32,
+    ) -> Result<(), BlackjackGameError>;
+    fn stand(&self, player: &mut Player);
+    fn hit(&mut self, player: &mut Player);
+    fn double_down(&mut self, player: &mut Player);
+    fn split(&mut self, player: &mut Player);
+    fn deal_hand(&mut self, player: &mut Player);
+    fn get_dealers_optimal_final_hand(&mut self) -> u8;
+    fn finish_hand(&mut self, player: &mut Player);
+}
 
-// pub trait DealersBlackjackHand {}
-// pub trait BlackjackTable<P: Player> {
-//     fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self;
-//     fn place_bet(&self, player: &mut P, bet: f32) -> Result<(), BlackjackGameError>;
-//     fn deal_hand(&mut self, player: &mut P);
-//     fn play_option(
-//         &mut self,
-//         player: &mut P,
-//         options: &HashMap<i32, String>,
-//         option: i32,
-//     ) -> Result<(), BlackjackGameError>;
-//     fn stand(&self, player: &mut P);
-//     fn hit(&mut self, player: &mut P);
-//     fn double_down(&mut self, player: &mut P);
-//     fn split(&mut self, player: &mut P);
-//     fn get_dealers_optimal_final_hand(&mut self) -> u8;
-//     fn finish_hand(&mut self, player: &mut P);
-// }
-
-// pub trait PlayersBlackjackHand {}
-
-// pub trait DealersBlackjackHand {}
-
+/// A general error that can capture lots of different situations when an error is needed
 #[derive(Debug)]
 pub struct BlackjackGameError {
     message: String,
@@ -665,252 +645,11 @@ impl DealersBlackjackHand {
     }
 }
 
-// struct BlackjackTable {
-//     deck: Deck,
-//     balance: f32,
-//     dealers_hand: DealersBlackjackHand,
-//     n_shuffles: u32,
-// }
-
-// impl BlackjackTable {
-//     fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self {
-//         let deck = Deck::new(n_decks);
-
-//         BlackjackTable {
-//             deck,
-//             balance: starting_balance,
-//             dealers_hand: DealersBlackjackHand::new(),
-//             n_shuffles,
-//         }
-//     }
-
-//     /// Takes a Player struct, `player` and places a bet
-//     fn place_bet(&self, player: &mut Player, bet: f32) -> Result<(), BlackjackGameError> {
-//         if bet <= 0.0 {
-//             return Err(BlackjackGameError {
-//                 message: "Bet must be a positive amount".to_string(),
-//             });
-//             // return Err("Bet must be a positive amount".to_string());
-//         } else if self.balance < 1.5 * bet {
-//             return Err(BlackjackGameError {
-//                 message: "Insufficient table balance to payout bet".to_string(),
-//             });
-//         }
-//         player.place_bet(bet)
-//     }
-
-//     /// Takes a Player `player`, HashMap `options` of playing options and an i32 `option`, then selects and calls the method
-//     /// that implements the correct logic for the given option. The method pancis if `option` is not in the HashMap `options`
-//     fn play_option(
-//         &mut self,
-//         player: &mut Player,
-//         options: &HashMap<i32, String>,
-//         option: i32,
-//     ) -> Result<(), BlackjackGameError> {
-//         match options[&option].as_str() {
-//             "stand" => Ok(self.stand(player)),
-//             "hit" => Ok(self.hit(player)),
-//             "split" => Ok(self.split(player)),
-//             "double down" => Ok(self.double_down(player)),
-//             _ => Err(BlackjackGameError {
-//                 message: format!("{} is not a valid option", option),
-//             }),
-//         }
-//     }
-
-//     /// Takes a Player struct `player` and changes its state via its stand method
-//     fn stand(&self, player: &mut Player) {
-//         player.stand();
-//         if !player.turn_is_over() {
-//             println!("{}", "-".to_string().repeat(80));
-//             self.dealers_hand.display_hand_without_hole();
-//             println!("\n\n");
-//             player.bj_hand.display_hand();
-//             player.display_balance();
-//         }
-//     }
-
-//     /// Takes a Player `player` and changes the state `players`'s hand by dealing another card.
-//     /// The function then computes if the player has busted or not and adjusts the bets of the player accordingly
-//     fn hit(&mut self, player: &mut Player) {
-//         player.receive_card(self.deck.get_next_card().unwrap());
-//         player.compute_hand_value();
-
-//         println!("{}", "-".to_string().repeat(80));
-//         self.dealers_hand.display_hand_without_hole();
-//         println!("\n\n");
-//         player.bj_hand.display_hand();
-//         player.display_balance();
-
-//         if player.busted() {
-//             println!("Busted, you lost the bet");
-//             self.balance += player.lose_bet() as f32;
-//         }
-//     }
-
-//     /// Method to implement the logic for doubling down on a bet
-//     fn double_down(&mut self, player: &mut Player) {
-//         // Call the double_down() method of the player, and deal them another card
-//         player.double_down();
-//         player.receive_card(self.deck.get_next_card().unwrap());
-//         player.compute_hand_value();
-
-//         if !player.busted() {
-//             player.stand();
-//         } else {
-//             println!("{}", "-".to_string().repeat(80));
-//             self.dealers_hand.display_hand_without_hole();
-//             println!("\n\n");
-//             player.bj_hand.display_hand();
-//             player.display_balance();
-//             println!("Busted, you lost the bet");
-//             self.balance += player.lose_bet() as f32;
-//         }
-//     }
-
-//     /// Method to execute the logic for a player to split
-//     fn split(&mut self, player: &mut Player) {
-//         player.split(
-//             self.deck.get_next_card().unwrap(),
-//             self.deck.get_next_card().unwrap(),
-//         );
-//         println!("{}", "-".to_string().repeat(80));
-//         self.dealers_hand.display_hand_without_hole();
-//         println!("\n\n");
-//         player.bj_hand.display_hand();
-//         player.display_balance();
-//     }
-
-//     /// Implments the logic that deals the initial cards at the start of a hand, checks if
-//     /// dealer has a blackjack and whether or not `player` has a blackjack, and then executes the appropriate logic
-//     fn deal_hand(&mut self, player: &mut Player) {
-//         assert!(
-//             !player.bj_hand.bets.is_empty(),
-//             "bet must be placed by the player before proceeding"
-//         );
-
-//         // Check if deck needs to be shuffled
-//         if self.deck.shuffle_flag {
-//             println!("Shuffling...");
-//             self.deck.shuffle(self.n_shuffles);
-//         }
-
-//         // Deal cards to player and dealer
-//         player.receive_card(self.deck.get_next_card().unwrap());
-
-//         self.dealers_hand
-//             .receive_card(self.deck.get_next_card().unwrap());
-
-//         player.receive_card(self.deck.get_next_card().unwrap());
-
-//         self.dealers_hand
-//             .receive_card(self.deck.get_next_card().unwrap());
-
-//         player.compute_hand_value();
-//         self.dealers_hand.compute_hand_value();
-
-//         // Check if dealer has blackjack or not, then perform the appropriate logic
-//         println!("{:-<80}", "");
-//         if self.dealers_hand.is_blackjack() {
-//             // Display state of table, no need to keep dealers hole card hidden
-//             self.dealers_hand.display_hand();
-//             self.dealers_hand.display_hand_value();
-//             println!("\n\n");
-//             player.bj_hand.display_hand();
-//             player.display_balance();
-//             println!();
-
-//             // Check if player has blackjack
-//             let mut result_str = String::from("Dealer has blackjack: ");
-//             if player.has_blackjack() {
-//                 result_str.push_str("you pushed");
-//                 player.balance += player.bj_hand.bets.pop().unwrap() as f32;
-//             } else {
-//                 result_str.push_str("you lost the bet");
-//                 self.balance += player.bj_hand.bets.pop().unwrap() as f32;
-//             }
-//             println!("{result_str}");
-//         } else {
-//             self.dealers_hand.display_hand_without_hole();
-//             println!("\n\n");
-//             player.bj_hand.display_hand();
-//             player.display_balance();
-
-//             // Check if player has a blackjack
-//             if player.has_blackjack() {
-//                 let winnings = 1.5 * (player.bets()[0] as f32);
-//                 self.balance -= winnings;
-//                 player.balance += winnings + (player.bj_hand.bets.pop().unwrap() as f32);
-//                 println!("You got blackjack, winnings: {:2.2}", winnings);
-//             }
-//         }
-//     }
-
-//     /// A method for computing and returning the optimal hand for the dealer at the end of a hand of blackjack.
-//     /// The dealers draws cards according to the rules of blackjack, then the optimal hand once a hand with a value of no less than 17 is achieved
-//     fn get_dealers_optimal_final_hand(&mut self) -> u8 {
-//         self.dealers_hand.compute_optimal_final_hand(&mut self.deck)
-//     }
-
-//     /// This method will complete a hand of blackjack, it will check `player` optimal hand(s) against the dealer and payout bets accordingly
-//     /// A call to this method will also reset the state of `player` and the dealer to have empty hands i.e. `player` and dealer will be in a state to play another round
-//     fn finish_hand(&mut self, player: &mut Player) {
-//         // Compute players optimal hands, if they have any bets remaining at the table
-//         // if the player has no remaining bets then, just skip to reseting dealer/player
-//         if let Some(players_optimal_hands) = player.get_optimal_hands() {
-//             let dealers_optimal_hand = self.get_dealers_optimal_final_hand();
-//             let mut winnings: f32 = 0.0;
-//             let mut refunded_bets: f32 = 0.0;
-//             let result_messages = if player.bets().len() > 1 {
-//                 let mut res = vec![];
-
-//                 for (i, bet) in player.bets().iter().enumerate() {
-//                     if *bet > 0 {
-//                         if dealers_optimal_hand > 21
-//                             || players_optimal_hands[&i] > dealers_optimal_hand
-//                         {
-//                             res.push(format!("You won bet #{}: ${}", i + 1, *bet));
-//                             self.balance -= *bet as f32;
-//                             winnings += *bet as f32;
-//                         } else if players_optimal_hands[&i] == dealers_optimal_hand {
-//                             res.push(format!("You pushed bet #{}: ${}", i + 1, *bet));
-//                             refunded_bets += *bet as f32;
-//                         } else {
-//                             self.balance += *bet as f32;
-//                             res.push(format!("You lost bet #{}: ${}", i + 1, *bet))
-//                         }
-//                     } else {
-//                         res.push(format!("You lost bet #{}: ${}", i + 1, *bet))
-//                     }
-//                 }
-//                 res
-//             } else {
-//                 if dealers_optimal_hand > 21 || players_optimal_hands[&0] > dealers_optimal_hand {
-//                     self.balance -= player.bets()[0] as f32;
-//                     winnings += player.bets()[0] as f32;
-//                     vec![String::from("You won the bet")]
-//                 } else if players_optimal_hands[&0] == dealers_optimal_hand {
-//                     refunded_bets += player.bets()[0] as f32;
-//                     vec![String::from("You pushed")]
-//                 } else {
-//                     self.balance += player.bets()[0] as f32;
-//                     vec![String::from("You lost the bet")]
-//                 }
-//             };
-
-//             self.display_end_of_hand_state(&player, result_messages, winnings);
-//             player.balance += 2.0 * winnings;
-//             player.balance += refunded_bets;
-//         };
-
-//         self.dealers_hand.reset();
-//         player.reset();
-//     }
-// }
 pub use crate::console::{
     BlackjackGameCLI, BlackjackTableCLI, DisplayableDealersBlackjackHand, DisplayablePlayer,
     DisplayablePlayersBlackjackHand,
 };
+
 pub fn run() -> std::io::Result<()> {
     let mut player = Player::new(String::from("Rick Sanchez"), 500.0);
     let mut table = BlackjackTableCLI::new(500000000.0, 6, 7);
