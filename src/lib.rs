@@ -33,6 +33,8 @@ pub trait BlackjackTable {
     fn finish_hand(&mut self, player: &mut Player);
 }
 
+// TODO: implement a struct that acts as a general interface for creating blackjack games
+
 /// A general error that can capture lots of different situations when an error is needed
 #[derive(Debug)]
 pub struct BlackjackGameError {

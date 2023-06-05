@@ -1,8 +1,13 @@
+pub mod game;
+pub mod player;
+pub mod table;
+
 /// This module contains all the necessary structs for a blackjack game played on the console.
 use crate::{
     BlackjackGameError, BlackjackTable, Card, DealersBlackjackHand, Deck, Player,
     PlayersBlackjackHand,
 };
+
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
