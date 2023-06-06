@@ -7,8 +7,6 @@ use std::iter::Iterator;
 use std::rc::Rc;
 use std::str::FromStr;
 
-// extern mod console;
-
 const SUITS: [&'static str; 4] = ["C", "D", "H", "S"];
 const RANKS: [&'static str; 13] = [
     "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
