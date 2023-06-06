@@ -15,25 +15,29 @@ const RANKS: [&'static str; 13] = [
 ];
 
 /// A trait that acts as an interface for any kind of blackjack table struct
-pub trait BlackjackTable {
+pub trait BlackjackTable<P: Player> {
     fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self;
-    fn place_bet(&self, player: &mut Player, bet: f32) -> Result<(), BlackjackGameError>;
+    fn place_bet(&self, player: &mut P, bet: f32) -> Result<(), BlackjackGameError>;
     fn play_option(
         &mut self,
-        player: &mut Player,
+        player: &mut P,
         options: &HashMap<i32, String>,
         option: i32,
     ) -> Result<(), BlackjackGameError>;
-    fn stand(&self, player: &mut Player);
-    fn hit(&mut self, player: &mut Player);
-    fn double_down(&mut self, player: &mut Player);
-    fn split(&mut self, player: &mut Player);
-    fn deal_hand(&mut self, player: &mut Player);
+    fn stand(&self, player: &mut P);
+    fn hit(&mut self, player: &mut P);
+    fn double_down(&mut self, player: &mut P);
+    fn split(&mut self, player: &mut P);
+    fn deal_hand(&mut self, player: &mut P);
     fn get_dealers_optimal_final_hand(&mut self) -> u8;
-    fn finish_hand(&mut self, player: &mut Player);
+    fn finish_hand(&mut self, player: &mut P);
 }
 
-// TODO: implement a struct that acts as a general interface for creating blackjack games
+// TODO: implement a struct that acts as a general interface for creating blackjack games and players;
+
+pub trait Player {}
+
+pub trait BlackjackGame {}
 
 /// A general error that can capture lots of different situations when an error is needed
 #[derive(Debug)]
@@ -174,7 +178,7 @@ impl Deck {
     }
 }
 
-struct PlayersBlackjackHand {
+struct PlayersBlackjackHandCLI {
     hand: Vec<Vec<Rc<Card>>>,
     hand_values: Vec<Vec<u8>>,
     bets: Vec<u32>,
@@ -183,7 +187,7 @@ struct PlayersBlackjackHand {
     bets_str: Vec<String>,
 }
 
-impl PlayersBlackjackHand {
+impl PlayersBlackjackHandCLI {
     /// Creates a new PlayersBlackjackHand struct
     fn new() -> Self {
         let hand = vec![vec![]];
@@ -193,7 +197,7 @@ impl PlayersBlackjackHand {
         let hand_values_str = vec![String::new()];
         let bets_str = vec![];
 
-        PlayersBlackjackHand {
+        PlayersBlackjackHandCLI {
             hand,
             hand_values,
             bets,
@@ -374,20 +378,20 @@ impl PlayersBlackjackHand {
     }
 }
 
-pub struct Player {
+pub struct PlayerCLI {
     name: String,
     balance: f32,
-    bj_hand: PlayersBlackjackHand,
+    bj_hand: PlayersBlackjackHandCLI,
     hand_idx: usize,
 }
 
-impl Player {
+impl PlayerCLI {
     /// Creates a new player struct
-    pub fn new(name: String, balance: f32) -> Player {
-        Player {
+    pub fn new(name: String, balance: f32) -> PlayerCLI {
+        PlayerCLI {
             name,
             balance,
-            bj_hand: PlayersBlackjackHand::new(),
+            bj_hand: PlayersBlackjackHandCLI::new(),
             hand_idx: 0usize,
         }
     }
@@ -648,14 +652,13 @@ impl DealersBlackjackHand {
 }
 
 pub use crate::console::{
-    BlackjackGameCLI, BlackjackTableCLI, DisplayableDealersBlackjackHand, DisplayablePlayer,
-    DisplayablePlayersBlackjackHand,
+    player::ConsolePlayer, table::ConsoleBlackjackTable, ConsoleBlackjackGame,
 };
 
 pub fn run() -> std::io::Result<()> {
-    let mut player = Player::new(String::from("Rick Sanchez"), 500.0);
-    let mut table = BlackjackTableCLI::new(500000000.0, 6, 7);
-    let mut game = BlackjackGameCLI::new(5, player, table);
+    let player = ConsolePlayer::new(String::from("Rick Sanchez"), 500.0);
+    let table = ConsoleBlackjackTable::new(500000000.0, 6, 7);
+    let mut game = ConsoleBlackjackGame::new(5, player, table);
     game.play()?;
 
     Ok(())
