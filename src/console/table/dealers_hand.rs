@@ -58,16 +58,15 @@ impl ConsoleDealersBlackjackHand {
     /// Checks whether or not the dealers hand has busted
     pub fn is_blackjack(&self) -> bool {
         self.hand.len() == 2
-            && ((self.hand[0].rank == "A" && self.hand[1].get_card_value() == 10)
-                || (self.hand[0].get_card_value() == 10 && self.hand[1].rank == "A"))
+            && ((self.hand[0].rank == "A" && self.hand[1].val == 10)
+                || (self.hand[0].val == 10 && self.hand[1].rank == "A"))
     }
 
     /// Computes the dealers hand value, and updates the string that represents that value for display
     /// via standard output ie console
     pub fn compute_hand_value(&mut self) {
         if self.hand.len() == 2 {
-            self.hand_value
-                .push(self.hand.iter().map(|c| c.get_card_value()).sum());
+            self.hand_value.push(self.hand.iter().map(|c| c.val).sum());
 
             // We need to check if there is an alternative hand value possible
             if self.hand[0].rank == "A" || self.hand[1].rank == "A" {
@@ -75,11 +74,7 @@ impl ConsoleDealersBlackjackHand {
                 self.hand_value.push(alternative_hand_val);
             }
         } else {
-            let new_card_val = self
-                .hand
-                .last()
-                .expect("hand should not be empty")
-                .get_card_value();
+            let new_card_val = self.hand.last().expect("hand should not be empty").val;
             self.hand_value[0] += new_card_val;
             if self.hand_value.len() == 2 {
                 self.hand_value[1] += new_card_val;

@@ -122,12 +122,7 @@ impl ConsolePlayersBlackjackHand {
     /// representing the value of the current hand as well
     pub fn compute_hand_value(&mut self, hand_idx: usize) {
         if self.hand[hand_idx].len() == 2 {
-            self.hand_values[hand_idx].push(
-                self.hand[hand_idx]
-                    .iter()
-                    .map(|c| c.get_card_value())
-                    .sum::<u8>(),
-            );
+            self.hand_values[hand_idx].push(self.hand[hand_idx].iter().map(|c| c.val).sum::<u8>());
 
             // Need to check if we have more than one possible value for the given hand
             if self.hand[hand_idx][0].rank == "A" || self.hand[hand_idx][1].rank == "A" {
@@ -142,7 +137,7 @@ impl ConsolePlayersBlackjackHand {
             let new_card_val = self.hand[hand_idx]
                 .last()
                 .expect("hand should not be empty")
-                .get_card_value();
+                .val;
             self.hand_values[hand_idx][0] += new_card_val;
             if self.hand_values[hand_idx].len() == 2 {
                 self.hand_values[hand_idx][1] += new_card_val;
@@ -177,8 +172,8 @@ impl ConsolePlayersBlackjackHand {
     pub fn is_blackjack(&self, hand_idx: usize) -> bool {
         hand_idx == 0
             && self.hand[0].len() == 2
-            && ((self.hand[0][0].rank == "A" && self.hand[0][1].get_card_value() == 10)
-                || (self.hand[0][0].get_card_value() == 10 && self.hand[0][1].rank == "A"))
+            && ((self.hand[0][0].rank == "A" && self.hand[0][1].val == 10)
+                || (self.hand[0][0].val == 10 && self.hand[0][1].rank == "A"))
     }
 
     /// Checks whether the current hand has busted or not
