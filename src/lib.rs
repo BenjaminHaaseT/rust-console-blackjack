@@ -3,7 +3,6 @@ pub mod console;
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::iter::Iterator;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -14,7 +13,7 @@ const RANKS: [&'static str; 13] = [
 
 /// A trait that acts as an interface for any kind of blackjack table struct
 pub trait BlackjackTable<P: Player> {
-    fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self;
+    fn new(starting_balance: f32, n_decks: usize, n_shuffles: u32) -> Self;
     fn place_bet(&self, player: &mut P, bet: f32) -> Result<(), BlackjackGameError>;
     fn play_option(
         &mut self,
@@ -112,7 +111,7 @@ impl Display for Card {
 /// A simple struct that acts as a collection of playing cards of type Card.
 pub struct Deck {
     cards: Vec<Rc<Card>>,
-    n_decks: u32,
+    n_decks: usize,
     deck_pos: usize,
     shuffle_flag_pos: usize,
     shuffle_flag: bool,
@@ -121,8 +120,8 @@ pub struct Deck {
 /// A struct to represent a deck of cards, is basically a collection of card structs that implements some specific logic related to a game of blackjack
 impl Deck {
     /// An associated function that aids in the building of a deck of cards
-    fn build_card_deck(n_decks: u32) -> Vec<Rc<Card>> {
-        let mut cards = vec![];
+    fn build_card_deck(n_decks: usize) -> Vec<Rc<Card>> {
+        let mut cards = Vec::with_capacity(n_decks * 52);
         for _i in 0..n_decks {
             for suit in SUITS {
                 for rank in RANKS {
@@ -134,7 +133,7 @@ impl Deck {
     }
 
     /// Creates and returns a new Deck struct
-    pub fn new(n_decks: u32) -> Deck {
+    pub fn new(n_decks: usize) -> Deck {
         assert!(n_decks > 0, "Cannot have a deck with zero cards");
         let cards = Self::build_card_deck(n_decks);
         let n_cards = cards.len();

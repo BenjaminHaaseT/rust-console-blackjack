@@ -77,7 +77,7 @@ impl ConsoleBlackjackTable {
 
 impl BlackjackTable<ConsolePlayer> for ConsoleBlackjackTable {
     /// Creates a new instance of a BlackjackTableCLI struct
-    fn new(starting_balance: f32, n_decks: u32, n_shuffles: u32) -> Self {
+    fn new(starting_balance: f32, n_decks: usize, n_shuffles: u32) -> Self {
         let deck = Deck::new(n_decks);
 
         ConsoleBlackjackTable {
