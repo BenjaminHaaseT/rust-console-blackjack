@@ -114,7 +114,7 @@ pub struct Deck {
     n_decks: usize,
     deck_pos: usize,
     shuffle_flag_pos: usize,
-    shuffle_flag: bool,
+    pub shuffle_flag: bool,
 }
 
 /// A struct to represent a deck of cards, is basically a collection of card structs that implements some specific logic related to a game of blackjack
